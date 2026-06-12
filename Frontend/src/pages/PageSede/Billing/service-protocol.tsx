@@ -4,17 +4,12 @@ import { toast } from "sonner";
 import { confirmAction } from "../../../components/ui/confirm-dialog";
 import { Button } from "../../../components/ui/button";
 import { X, ChevronRight } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { API_BASE_URL } from "../../../types/config";
 import { ProductCatalogModal } from "./ProductCatalogModal";
 import { formatSedeNombre } from "../../../lib/sede";
 import { formatDateDMY } from "../../../lib/dateFormat";
 import { handleFacturarRequest } from "./facturarApi";
-import {
-  emitElectronicInvoice,
-  extractElectronicTargets,
-} from "../../../lib/electronic-invoice";
-import { resolveAllegraGate } from "../../../lib/allegra-fe";
 import { useAuth } from "../../../components/Auth/AuthContext";
 import {
   PAYMENT_METHOD_OPTIONS,
@@ -167,14 +162,13 @@ export function ServiceProtocol({
   onClose,
   onAppointmentUpdated,
 }: ServiceProtocolProps) {
-  const { user, activeSedeId } = useAuth();
-  const [lastFacturarResult, setLastFacturarResult] = useState<any>(null);
+  const { user } = useAuth();
+
   const [_feStatus, setFeStatus] = useState<"idle" | "loading" | "success" | "error">(
     "idle",
   );
   const [_feMessage, setFeMessage] = useState<string | null>(null);
-  const _reloadTimeoutRef = useRef<number | null>(null);
-  const [showProductModal, setShowProductModal] = useState(false);
+const [showProductModal, setShowProductModal] = useState(false);
   const [selectedProducts, setSelectedProducts] = useState<Producto[]>([]);
   const [productsQuantities, setProductsQuantities] = useState<Record<string, number>>({});
   const [isFacturando, setIsFacturando] = useState(false);
@@ -191,27 +185,10 @@ export function ServiceProtocol({
     user?.nombre_local ||
     "";
 
-  const allegraGate = useMemo(
-    () => resolveAllegraGate({ sedeId: activeSedeId, sedeNombre: activeSedeNombre }),
-    [activeSedeId, activeSedeNombre],
-  );
-  const allegraEnabled = allegraGate.allowed;
-
-  const feTarget = useMemo(() => {
-    const fromLast = extractElectronicTargets(lastFacturarResult);
-    const fromAppointment = extractElectronicTargets(selectedAppointment as any);
-    return {
-      saleId: fromLast.saleId || fromAppointment.saleId,
-      invoiceId: fromLast.invoiceId || fromAppointment.invoiceId,
-    };
-  }, [lastFacturarResult, selectedAppointment]);
-
-  const hasFeTarget = Boolean(feTarget.saleId || feTarget.invoiceId);
 
   useEffect(() => {
     setFeStatus("idle");
     setFeMessage(null);
-    setLastFacturarResult(null);
     setSelectedProducts([]);
     setProductsQuantities({});
     setSelectedPaymentMethod("efectivo");
@@ -442,7 +419,7 @@ export function ServiceProtocol({
         categoria: product.categoria,
       }));
 
-      const result = await handleFacturarRequest({
+      await handleFacturarRequest({
         id: selectedAppointment._id,
         tipo: "cita",
         token,
@@ -451,7 +428,6 @@ export function ServiceProtocol({
         total_final: totalGeneral,
       });
 
-      setLastFacturarResult(result);
       toast.success("Facturación exitosa");
 
       setSelectedProducts([]);
@@ -468,33 +444,6 @@ export function ServiceProtocol({
       toast.error("Error al facturar");
     } finally {
       setIsFacturando(false);
-    }
-  };
-
-  const _handleSendFe = async () => {
-    if (!allegraEnabled || !hasFeTarget) return;
-
-    const token = user?.access_token;
-    if (!token) {
-      setFeStatus("error");
-      setFeMessage("No hay token");
-      return;
-    }
-
-    try {
-      setFeStatus("loading");
-      setFeMessage(null);
-      const result = await emitElectronicInvoice({
-        saleId: feTarget.saleId,
-        invoiceId: feTarget.invoiceId,
-        token,
-        sedeId: activeSedeId,
-      });
-      setFeStatus("success");
-      setFeMessage(result.message);
-    } catch (error) {
-      setFeStatus("error");
-      setFeMessage("Error al enviar FE");
     }
   };
 
