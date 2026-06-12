@@ -10,7 +10,6 @@ import { DirectSaleModal } from "../../PageSede/Billing/DirectSaleModal"
 import type { Factura } from "../../../types/factura"
 import { DEFAULT_PERIOD } from "../../../lib/period"
 import { toLocalYMD } from "../../../lib/dateFormat"
-import { useAuth } from "../../../components/Auth/AuthContext"
 import {
   formatCurrencyMetric,
   type PaymentMethodTotals,
