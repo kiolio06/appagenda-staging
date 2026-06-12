@@ -48,6 +48,7 @@ app.add_middleware(
         "https://agenda.rizosfelices.co",
         "https://staging-agenda.rizosfelices.co",
         "https://previewapi.rizosfelices.co",
+        "https://staging-appagenda.netlify.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],
